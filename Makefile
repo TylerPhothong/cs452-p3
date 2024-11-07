@@ -1,50 +1,39 @@
-TARGET_EXEC ?= myprogram
-TARGET_TEST ?= test-lab
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -Wextra -fno-omit-frame-pointer -g -I./src
 
-BUILD_DIR ?= build
-TEST_DIR ?= tests
-SRC_DIR ?= src
-EXE_DIR ?= app
+# Directories
+SRC_DIR = src
+APP_DIR = app
+BUILD_DIR = build
+BUILD_APP_DIR = $(BUILD_DIR)/app
 
-SRCS := $(shell find $(SRC_DIR) -name *.c)
-OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
-DEPS := $(OBJS:.o=.d)
+# Source files
+SRCS = $(SRC_DIR)/lab.c $(APP_DIR)/main.c
+OBJS = $(BUILD_DIR)/lab.o $(BUILD_APP_DIR)/main.o
 
-TEST_SRCS := $(shell find $(TEST_DIR) -name *.c)
-TEST_OBJS := $(TEST_SRCS:%=$(BUILD_DIR)/%.o)
-TEST_DEPS := $(TEST_OBJS:.o=.d)
+# Output binary
+TARGET = myprogram  # Place executable in root directory
 
-EXE_SRCS := $(shell find $(EXE_DIR) -name *.c)
-EXE_OBJS := $(EXE_SRCS:%=$(BUILD_DIR)/%.o)
-EXE_DEPS := $(EXE_OBJS:.o=.d)
+# Create necessary directories
+$(BUILD_APP_DIR):
+	mkdir -p $(BUILD_APP_DIR)
 
-CFLAGS ?= -Wall -Wextra -fno-omit-frame-pointer -fsanitize=address -g -MMD -MP
-LDFLAGS ?= -pthread -lreadline
-
-all: $(TARGET_EXEC) $(TARGET_TEST)
-
-$(TARGET_EXEC): $(OBJS) $(EXE_OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(EXE_OBJS) -o $@ $(LDFLAGS)
-
-$(TARGET_TEST): $(OBJS) $(TEST_OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(TEST_OBJS)  -o $@ $(LDFLAGS)
-
-$(BUILD_DIR)/%.c.o: %.c
-	mkdir -p $(dir $@)
+# Compile the object files
+$(BUILD_DIR)/lab.o: $(SRC_DIR)/lab.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-check: $(TARGET_TEST)
-	ASAN_OPTIONS=detect_leaks=1 ./$<
+$(BUILD_APP_DIR)/main.o: $(APP_DIR)/main.c | $(BUILD_APP_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: clean
+# Link the object files into the final binary
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -pthread -o $(TARGET)
+
+# Clean the build directory and remove the executable from root
 clean:
-	$(RM) -rf $(BUILD_DIR) $(TARGET_EXEC) $(TARGET_TEST)
+	rm -rf $(BUILD_DIR) myprogram
 
-# Install the libs needed to use git send-email on codespaces
-.PHONY: install-deps
-install-deps:
-	sudo apt-get update -y
-	sudo apt-get install -y libio-socket-ssl-perl libmime-tools-perl
-
-
--include $(DEPS) $(TEST_DEPS) $(EXE_DEPS)
+# Run the program
+run: $(TARGET)
+	./$(TARGET) 1000 4  # Example arguments; adjust as needed
